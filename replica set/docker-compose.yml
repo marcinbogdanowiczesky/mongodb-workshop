@@ -1,0 +1,69 @@
+name: mongodb-replica
+services:
+  mongodb1:
+    image: mongo:latest
+    container_name: mongodb1
+    restart: always
+    ports:
+      - "27017:27017"
+    command: mongod --replSet rs0 --bind_ip_all
+    volumes:
+      - mongodb1_data:/data/db
+    networks:
+      - mongodb-network
+
+  mongodb2:
+    image: mongo:latest
+    container_name: mongodb2
+    restart: always
+    ports:
+      - "27018:27017"
+    command: mongod --replSet rs0 --bind_ip_all
+    volumes:
+      - mongodb2_data:/data/db
+    networks:
+      - mongodb-network
+
+  mongodb3:
+    image: mongo:latest
+    container_name: mongodb3
+    restart: always
+    ports:
+      - "27019:27017"
+    command: mongod --replSet rs0 --bind_ip_all
+    volumes:
+      - mongodb3_data:/data/db
+    networks:
+      - mongodb-network
+
+  mongodb-setup:
+    image: mongo:latest
+    depends_on:
+      - mongodb1
+      - mongodb2
+      - mongodb3
+    command: >
+      bash -c "
+        sleep 10 &&
+        mongosh --host host.docker.internal:27017 --eval 'rs.initiate({
+          _id: \"rs0\",
+          members: [
+            { _id: 0, host: \"host.docker.internal:27017\" },
+            { _id: 1, host: \"host.docker.internal:27018\" },
+            { _id: 2, host: \"host.docker.internal:27019\" }
+          ]
+        })'
+      "
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - mongodb-network
+
+volumes:
+  mongodb1_data:
+  mongodb2_data:
+  mongodb3_data:
+
+networks:
+  mongodb-network:
+    driver: bridge 
